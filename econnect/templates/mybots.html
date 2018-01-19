@@ -1,0 +1,16 @@
+{% extends "layout.html" %}
+{% block body %}
+
+<h1>My Bots</h1>
+{% for bot in bots %}
+<div class="card">
+    <h5 class="card-header">{{ bot.name }}</h5>
+    <div class="card-body">
+        <h5 class="card-title">{{ bot.name }}</h5>
+        <p class="card-text">{{ bot.description }}</p>
+        <a href="#" class="btn btn-primary">Connect to Facebook</a>
+    </div>
+</div>
+{% endfor %}
+
+{% endblock %}

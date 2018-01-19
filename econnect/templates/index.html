@@ -1,0 +1,16 @@
+{% extends "layout.html" %}
+{% block body %}
+
+<div class="card">
+    <h5 class="card-header">Facebook User</h5>
+    <div class="card-body">
+        {% if fuser %}
+        <h5 class="card-title">{{ bot.name }}</h5>
+        <p class="card-text">{{ bot.description }}</p>
+        {% else %}
+        <a href="{{ url_fbauth }}" class="btn btn-primary">Connect to Facebook</a>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}

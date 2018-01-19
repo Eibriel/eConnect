@@ -1,3 +1,6 @@
+econnect/config/local.py
+cert
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
