@@ -1,8 +1,11 @@
 Flask==0.12.2
 Flask-Login==0.4.1
+Flask-SSLify==0.1.5
 
 watson_developer_cloud==0.26.1
 cf-deployment-tracker==1.0.5
 
 pymongo==3.6.0
 bcrypt==3.1.4
+
+requests==2.18.4

@@ -1,4 +1,5 @@
 applications:
 - name: EibrielConnect
-  host: eibrielconnect
+  routes:
+   - route: connect.eibriel.com
   memory: 128M

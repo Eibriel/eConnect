@@ -5,8 +5,14 @@
     <h5 class="card-header">Facebook User</h5>
     <div class="card-body">
         {% if fuser %}
-        <h5 class="card-title">{{ bot.name }}</h5>
-        <p class="card-text">{{ bot.description }}</p>
+        <h5 class="card-title">{{ fuser["facebook_first_name"] }}</h5>
+        <p class="card-text">{{ fuser["facebook_user_id"] }}</p>
+        <ul>
+        {% for page in fuser["facebook_pages"]%}
+            <li>{{ page["name"] }} {% if page["instagram"] %}(+ Instagram){% endif %}</li>
+        {% endfor %}
+        </ul>
+        <a href="{{ url_fbauth }}" class="btn btn-primary">Reconnect to Facebook</a>
         {% else %}
         <a href="{{ url_fbauth }}" class="btn btn-primary">Connect to Facebook</a>
         {% endif %}

@@ -8,7 +8,11 @@
     <div class="card-body">
         <h5 class="card-title">{{ bot.name }}</h5>
         <p class="card-text">{{ bot.description }}</p>
-        <a href="#" class="btn btn-primary">Connect to Facebook</a>
+        <ul>
+        {% for page in fuser["facebook_pages"]%}
+            <li>{{ page["name"] }} {% if page["instagram"] %}(+ Instagram){% endif %} {% if page["subscripted_app"] %}<a href="/action_to_page/{{ page["id"] }}/unsubscribe">Unsubscribe</a>{% else %}<a href="/action_to_page/{{ page["id"] }}/subscribe">Subscribe</a>{% endif %}</li>
+        {% endfor %}
+        </ul>
     </div>
 </div>
 {% endfor %}

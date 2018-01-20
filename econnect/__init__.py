@@ -6,14 +6,24 @@ from flask import Flask
 
 # from cloudant import Cloudant
 from pymongo import MongoClient
+from flask_sslify import SSLify
 
 app = Flask(__name__)
+sslify = SSLify(app)
 
 app.config.from_object('econnect.config.Config')
 
+app.debug = False
+if 'VCAP_SERVICES' not in os.environ:
+    app.debug = True
+    app.config.PREFERRED_URL_SCHEME = "http"
+    app.config.SERVER_NAME = None
+
 
 def connect_db():
+    prefix = "dev_"
     if 'VCAP_SERVICES' in os.environ:
+        prefix = ""
         vcap = json.loads(os.getenv('VCAP_SERVICES'))
         print('Found VCAP_SERVICES')
     elif "LOCAL_ENV" in app.config:
@@ -35,7 +45,7 @@ def connect_db():
         print("Cloudant Error")
     try:
         # db = client.create_database(db_name, throw_on_exists=False)
-        prefix = "dev_"
+
         db = {
             "db_econnect": client["{}econnect".format(prefix)],
             "db_users": client["{}users".format(prefix)],
