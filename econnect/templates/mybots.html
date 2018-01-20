@@ -9,9 +9,24 @@
         <h5 class="card-title">{{ bot.name }}</h5>
         <p class="card-text">{{ bot.description }}</p>
         <ul>
-        {% for page in fuser["facebook_pages"]%}
-            <li>{{ page["name"] }} {% if page["instagram"] %}(+ Instagram){% endif %} {% if page["subscripted_app"] %}<a href="/action_to_page/{{ page["id"] }}/unsubscribe">Unsubscribe</a>{% else %}<a href="/action_to_page/{{ page["id"] }}/subscribe">Subscribe</a>{% endif %}</li>
-        {% endfor %}
+            <li>Facebook
+                <ul>
+                    <ul>
+                        {% for page in fuser["facebook_pages"]%}
+                        {% if page["subscripted_app"] %}
+                        <li>{{ page["name"] }} {% if bot["integrations"]["facebook"]["page_id"] == page["id"] %}<strong>Selected{% if bot["integrations"]["facebook"]["instagram_id"] != null %} (+Instagram){% endif %}</strong>{% else %}<a href="/select_page/{{ bot["_id"] }}/{{ page["id"] }}/select">Select{% endif %}</a></li>
+                        {% endif %}
+                        {% endfor %}
+                        <li><a href="/select_page/{{ bot["_id"] }}/all/unselect">Unselect all</a></li>
+                    </ul>
+                    <li>{% if bot["integrations"]["facebook"]["subscribed_to_messenger"] %}<a href="/action_to_facebook/{{ bot["_id"] }}/messenger/unsubscribe">Unsubscribe from Messenger</a>{% else %}<a href="/action_to_facebook/{{ bot["_id"] }}/messenger/subscribe">Subscribe to Messenger</a>{% endif %}</li>
+                    <li>{% if bot["integrations"]["facebook"]["subscribed_to_feed"] %}<a href="/action_to_facebook/{{ bot["_id"] }}/feed/unsubscribe">Unsubscribe from Feed</a>{% else %}<a href="/action_to_facebook/{{ bot["_id"] }}/feed/subscribe">Subscribe to Feed</a>{% endif %}</li>
+                    <li>{% if bot["integrations"]["facebook"]["subscribed_to_instagram"] %}<a href="/action_to_facebook/{{ bot["_id"] }}/instagram/unsubscribe">Unsubscribe from Instagram</a>{% else %}<a href="/action_to_facebook/{{ bot["_id"] }}/instagram/subscribe">Subscribe to Instagram</a>{% endif %}</li>
+                </ul>
+            </li>
+            <li>Telegram</li>
+            <li>Kik</li>
+            <li>Skype</li>
         </ul>
     </div>
 </div>

@@ -1,6 +1,8 @@
 {% extends "layout.html" %}
 {% block body %}
 
+<h1>Dashboard</h1>
+
 <div class="card">
     <h5 class="card-header">Facebook User</h5>
     <div class="card-body">
@@ -9,7 +11,7 @@
         <p class="card-text">{{ fuser["facebook_user_id"] }}</p>
         <ul>
         {% for page in fuser["facebook_pages"]%}
-            <li>{{ page["name"] }} {% if page["instagram"] %}(+ Instagram){% endif %}</li>
+            <li>{{ page["name"] }} {% if page["instagram"] %}(+Instagram){% endif %} {% if page["subscripted_app"] %}<a href="/action_to_page/{{ page["id"] }}/unsubscribe">Unsubscribe</a>{% else %}<a href="/action_to_page/{{ page["id"] }}/subscribe">Subscribe</a>{% endif %}</li>
         {% endfor %}
         </ul>
         <a href="{{ url_fbauth }}" class="btn btn-primary">Reconnect to Facebook</a>

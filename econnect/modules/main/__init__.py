@@ -1,3 +1,4 @@
+import bson
 import random
 import logging
 import requests
@@ -155,14 +156,14 @@ class user_class():
                 rr_json = r.json()
                 if "error" in rr_json:
                     return None
+                page_instagram_id = None
+                if "connected_instagram_account" in rr_json:
+                    page_instagram_id = rr_json["connected_instagram_account"]["id"]
                 data = {
                     "name": facebook_page["name"],
                     "id": facebook_page["id"],
-                    "instagram": rr_json.get("connected_instagram_account", None),
-                    "subscripted_app": False,
-                    "subscripbed_to_facebook": False,
-                    "subscripbed_to_messenger": False,
-                    "subscripbed_to_instagram": False,
+                    "instagram": page_instagram_id,
+                    "subscripted_app": False
                 }
                 params = {
                     "access_token": facebook_page["access_token"]
@@ -264,6 +265,83 @@ def login():
     return render_template('login.html', username=username)
 
 
+@main.route('/select_page/<bot_id>/<page_id>/<action>', methods=['GET'])
+@login_required
+def select_page(bot_id, page_id, action):
+    if action not in ["select", "unselect"]:
+        abort(500)
+    if action == "select" and page_id == "all":
+        abort(500)
+    bots = current_user.get_bots()
+    is_owner = False
+    for bot in bots:
+        if bot["_id"] == bson.objectid.ObjectId(bot_id):
+            is_owner = True
+    if not is_owner:
+        abort(403)
+
+    if page_id == "all" and action == "unselect":
+        db = get_db()
+        query = {"_id": bson.objectid.ObjectId(bot_id)}
+        update = {
+            "$set": {
+                "integrations.facebook.page_id": None,
+                "integrations.facebook.page_access_token": None,
+                "integrations.facebook.instagram_id": None
+            }
+        }
+        db["db_bots"]["bots"].update_one(query, update)
+    if action == "select":
+        db = get_db()
+        query = {"uuid": current_user.user_id}
+        user = db["db_users"]["users"].find_one(query)
+        if user["facebook_user"] is None:
+            abort(500)
+        facebook_access_token = user["facebook_user"]["facebook_access_token"]
+        facebook_user_id = user["facebook_user"]["facebook_user_id"]
+
+        # Get Page
+        params = {
+            "access_token": facebook_access_token
+        }
+        url = "https://graph.facebook.com/v2.11/{}?fields=accounts".format(facebook_user_id)
+        r = requests.get(url, params=params)
+        r_json = r.json()
+        if "error" in r_json:
+            abort(500)
+        print(r.text)
+        page_access_token = None
+        for facebook_page in r_json["accounts"]["data"]:
+            if facebook_page["id"] == page_id:
+                page_access_token = facebook_page["access_token"]
+                page_instagram_id = None
+                break
+
+        # Get Instagram
+        params = {
+            "access_token": facebook_access_token
+        }
+        url = "https://graph.facebook.com/v2.11/{}?fields=connected_instagram_account".format(facebook_page["id"])
+        r = requests.get(url, params=params)
+        rr_json = r.json()
+        if "error" in rr_json:
+            abort(500)
+        page_instagram_id = None
+        if "connected_instagram_account" in rr_json:
+            page_instagram_id = rr_json["connected_instagram_account"]["id"]
+
+        query = {"_id": bson.objectid.ObjectId(bot_id)}
+        update = {
+            "$set": {
+                "integrations.facebook.page_id": page_id,
+                "integrations.facebook.page_access_token": page_access_token,
+                "integrations.facebook.instagram_id": page_instagram_id
+            }
+        }
+        db["db_bots"]["bots"].update_one(query, update)
+    return redirect(url_for('mybots'))
+
+
 @main.route('/action_to_page/<page_id>/<action>', methods=['GET'])
 @login_required
 def subscribe_to_page(page_id, action):
@@ -280,7 +358,7 @@ def subscribe_to_page(page_id, action):
     params = {
         "access_token": facebook_access_token
     }
-    url = "https://graph.facebook.com/v2.11/me?fields=accounts"
+    url = "https://graph.facebook.com/v2.11/{}?fields=accounts".format(facebook_user_id)
     r = requests.get(url, params=params)
     r_json = r.json()
     if "error" in r_json:
@@ -304,6 +382,37 @@ def subscribe_to_page(page_id, action):
         r = requests.delete(url, params=params)
     else:
         abort(500)
+    return redirect(url_for('mybots'))
+
+
+@main.route('/action_to_facebook/<bot_id>/<target>/<action>', methods=['GET'])
+@login_required
+def integrate_bot_to(bot_id, target, action):
+    db = get_db()
+    query = {"_id": bson.objectid.ObjectId(bot_id)}
+    # user = db["db_bots"]["bots"].find_one(query)
+    # if user["facebook_user"] is None:
+    #     abort(500)
+    if action == "subscribe":
+        update_action = True
+    elif action == "unsubscribe":
+        update_action = False
+    else:
+        abort(500)
+    if target == "feed":
+        update_target = "subscribed_to_feed"
+    elif target == "messenger":
+        update_target = "subscribed_to_messenger"
+    elif target == "instagram":
+        update_target = "subscribed_to_instagram"
+    else:
+        abort(500)
+    update = {
+        "$set": {
+            "integrations.facebook.{}".format(update_target): update_action
+        }
+    }
+    db["db_bots"]["bots"].update_one(query, update)
     return redirect(url_for('mybots'))
 
 
