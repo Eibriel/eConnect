@@ -4,7 +4,6 @@ import base64
 
 from flask import Flask
 
-# from cloudant import Cloudant
 from pymongo import MongoClient
 from flask_sslify import SSLify
 
@@ -44,11 +43,9 @@ def connect_db():
         raise
         print("Cloudant Error")
     try:
-        # db = client.create_database(db_name, throw_on_exists=False)
-
         db = {
             "db_econnect": client["{}econnect".format(prefix)],
-            "db_users": client["{}users".format(prefix)],
+            "db_brands": client["{}brands".format(prefix)],
             "db_bots": client["{}bots".format(prefix)],
             "db_clients": client["{}clients".format(prefix)]
         }

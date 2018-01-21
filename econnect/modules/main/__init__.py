@@ -73,7 +73,7 @@ class user_class():
         db = get_db()
         query = {"username": username}
         print(query)
-        user = db["db_users"]["users"].find_one(query)
+        user = db["db_brands"]["brands"].find_one(query)
         print(user)
         if user is not None:
             if str(user["password"]) == "123":
@@ -86,7 +86,7 @@ class user_class():
                     }
                 }
                 # user.update(update)
-                db["db_users"]["users"].update_one(query, update)
+                db["db_brands"]["brands"].update_one(query, update)
 
     def load(self):
         if self.user_id is None:
@@ -94,7 +94,7 @@ class user_class():
         db = get_db()
         query = {"uuid": self.user_id}
         print(query)
-        user = db["db_users"]["users"].find_one(query)
+        user = db["db_brands"]["brands"].find_one(query)
         print(user)
         if user is None:
             return
@@ -113,7 +113,7 @@ class user_class():
     def get_facebook_auth_state(self, new=False):
         db = get_db()
         query = {"uuid": self.user_id}
-        user = db["db_users"]["users"].find_one(query)
+        user = db["db_brands"]["brands"].find_one(query)
         state = None
         if new:
             state = str(random.randint(1000, 9999))
@@ -122,7 +122,7 @@ class user_class():
                     "facebook_auth_state": state
                 }
             }
-            db["db_users"]["users"].update_one(query, update)
+            db["db_brands"]["brands"].update_one(query, update)
         else:
             state = user["facebook_auth_state"]
         return state
@@ -130,7 +130,7 @@ class user_class():
     def get_facebook_user(self):
         db = get_db()
         query = {"uuid": self.user_id}
-        user = db["db_users"]["users"].find_one(query)
+        user = db["db_brands"]["brands"].find_one(query)
         if user["facebook_user"] is None:
             return None
         facebook_access_token = user["facebook_user"]["facebook_access_token"]
@@ -146,39 +146,40 @@ class user_class():
             return None
 
         facebook_pages = []
-        for facebook_page in r_json["accounts"]["data"]:
-            if "ADMINISTER" in facebook_page["perms"]:
-                params = {
-                    "access_token": facebook_access_token
-                }
-                url = "https://graph.facebook.com/v2.11/{}?fields=connected_instagram_account".format(facebook_page["id"])
-                r = requests.get(url, params=params)
-                rr_json = r.json()
-                if "error" in rr_json:
-                    return None
-                page_instagram_id = None
-                if "connected_instagram_account" in rr_json:
-                    page_instagram_id = rr_json["connected_instagram_account"]["id"]
-                data = {
-                    "name": facebook_page["name"],
-                    "id": facebook_page["id"],
-                    "instagram": page_instagram_id,
-                    "subscripted_app": False
-                }
-                params = {
-                    "access_token": facebook_page["access_token"]
-                }
-                url = "https://graph.facebook.com/v2.11/{}/subscribed_apps".format(facebook_page["id"])
-                r = requests.get(url, params=params)
-                rr_json = r.json()
-                print(r.text)
-                if "error" in rr_json:
-                    return None
-                for subscription in rr_json["data"]:
-                    if subscription["id"] == app.config["FB_APP_ID"]:
-                        data["subscripted_app"] = True
+        if "accounts" in r_json:
+            for facebook_page in r_json["accounts"]["data"]:
+                if "ADMINISTER" in facebook_page["perms"]:
+                    params = {
+                        "access_token": facebook_access_token
+                    }
+                    url = "https://graph.facebook.com/v2.11/{}?fields=connected_instagram_account".format(facebook_page["id"])
+                    r = requests.get(url, params=params)
+                    rr_json = r.json()
+                    if "error" in rr_json:
+                        return None
+                    page_instagram_id = None
+                    if "connected_instagram_account" in rr_json:
+                        page_instagram_id = rr_json["connected_instagram_account"]["id"]
+                    data = {
+                        "name": facebook_page["name"],
+                        "id": facebook_page["id"],
+                        "instagram": page_instagram_id,
+                        "subscripted_app": False
+                    }
+                    params = {
+                        "access_token": facebook_page["access_token"]
+                    }
+                    url = "https://graph.facebook.com/v2.11/{}/subscribed_apps".format(facebook_page["id"])
+                    r = requests.get(url, params=params)
+                    rr_json = r.json()
+                    print(r.text)
+                    if "error" in rr_json:
+                        return None
+                    for subscription in rr_json["data"]:
+                        if subscription["id"] == app.config["FB_APP_ID"]:
+                            data["subscripted_app"] = True
 
-                facebook_pages.append(data)
+                    facebook_pages.append(data)
 
         fb_user = {
             "facebook_first_name": r_json["first_name"],
@@ -214,7 +215,7 @@ class user_class():
         # Save user token
         db = get_db()
         query = {"uuid": self.user_id}
-        user = db["db_users"]["users"].find_one(query)
+        user = db["db_brands"]["brands"].find_one(query)
         update = {
             "$set": {
                 "facebook_user": {
@@ -223,7 +224,7 @@ class user_class():
                 }
             }
         }
-        db["db_users"]["users"].update_one(query, update)
+        db["db_brands"]["brands"].update_one(query, update)
 
 
 @login_manager.user_loader
@@ -261,7 +262,7 @@ def login():
         if not is_safe_url(next):
             return abort(400)
 
-        return redirect(next or url_for('.index'))
+        return redirect(next or url_for('main.index'))
     return render_template('login.html', username=username)
 
 
@@ -294,7 +295,7 @@ def select_page(bot_id, page_id, action):
     if action == "select":
         db = get_db()
         query = {"uuid": current_user.user_id}
-        user = db["db_users"]["users"].find_one(query)
+        user = db["db_brands"]["brands"].find_one(query)
         if user["facebook_user"] is None:
             abort(500)
         facebook_access_token = user["facebook_user"]["facebook_access_token"]
@@ -349,7 +350,7 @@ def subscribe_to_page(page_id, action):
         abort(500)
     db = get_db()
     query = {"uuid": current_user.user_id}
-    user = db["db_users"]["users"].find_one(query)
+    user = db["db_brands"]["brands"].find_one(query)
     if user["facebook_user"] is None:
         return None
     facebook_access_token = user["facebook_user"]["facebook_access_token"]
@@ -453,34 +454,6 @@ def auth_b():
     token_type = r_json["token_type"]
     # expires_in = r_json["expires_in"]
     current_user.connect_facebook_user(access_token)
-    if 0:
-        try:
-            tokens = db["db_users"][""][db_id]
-            create_tokens = False
-        except KeyError:
-            tokens = {'_id': db_id, "users_tokens": {}, "pages_tokens": {}}
-            create_tokens = True
-        tokens["users_tokens"][app.config["FB_ADMIN_ID"]] = access_token
-
-        # Get page token
-        params = {
-            "access_token": access_token
-        }
-        url = "https://graph.facebook.com/me/accounts"
-        r = requests.get(url, params=params)
-        r_json = r.json()
-        econnect_logger.error(r_json)
-        page_token = ""
-        for page in r_json["data"]:
-            if page["id"] == app.config["FB_PAGE_ID"]:
-                page_token = page["access_token"]
-
-        tokens["pages_tokens"][app.config["FB_PAGE_ID"]] = page_token
-
-        if create_tokens:
-            db.create_document(tokens)
-        else:
-            tokens.save()
     return redirect(url_for('.index'))
 
 
@@ -499,30 +472,6 @@ def logout():
     return redirect(url_for('login'))
 
 
-@main.route('/api/facebook', methods=['GET', 'POST'])
-def facebook():
-    # facebook_logger.error(request)
-    econnect_logger.error(request.json)
-    config = app.config
-    # Facebook Challenge
-    if request.method == 'GET':
-        hub_mode = request.args.get('hub.mode', '')
-        hub_verify_token = request.args.get('hub.verify_token', '')
-        hub_challenge = request.args.get('hub.challenge', '')
-        if hub_mode == 'subscribe' and hub_verify_token == config["FB_HUB_VERIFY_TOKEN"]:
-            return hub_challenge
-        else:
-            abort(403)
-    elif request.method == 'POST':
-        msg = request.json
-        if "object" in msg and msg['object'] == 'page':
-            for entry in msg['entry']:
-                if "messaging" in entry:
-                    process_facebook_input(entry)
-                elif "changes" in entry:
-                    process_facebook_feed(entry)
-        elif "object" in msg and msg['object'] == 'instagram':
-            for entry in msg['entry']:
-                if "changes" in entry:
-                    process_instagram_comment(entry)
-    return jsonify({})
+@app.route("/privacy")
+def privacy():
+    return render_template('privacy.html')
