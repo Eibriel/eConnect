@@ -139,7 +139,7 @@ class user_class():
         params = {
             "access_token": facebook_access_token
         }
-        url = "https://graph.facebook.com/v2.11/me?fields=first_name,accounts"
+        url = "https://graph.facebook.com/v2.11/{}?fields=first_name,accounts".format(facebook_user_id)
         r = requests.get(url, params=params)
         r_json = r.json()
         if "error" in r_json:

@@ -47,7 +47,7 @@ def connect_db():
             "db_econnect": client["{}econnect".format(prefix)],
             "db_brands": client["{}brands".format(prefix)],
             "db_bots": client["{}bots".format(prefix)],
-            "db_clients": client["{}clients".format(prefix)]
+            "db_users": client["{}users".format(prefix)]
         }
     except:
         raise
