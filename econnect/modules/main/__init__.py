@@ -1,5 +1,6 @@
 import bson
 import random
+import bcrypt
 import logging
 import requests
 
@@ -76,9 +77,9 @@ class user_class():
         user = db["db_brands"]["brands"].find_one(query)
         print(user)
         if user is not None:
-            if str(user["password"]) == "123":
+            self.user_id = user["_id"]
+            if bcrypt.checkpw(str(user["password"]), hashed):
                 self.is_authenticated = True
-                self.user_id = user["uuid"]
                 print("AUTH")
                 update = {
                     "$set": {
@@ -87,12 +88,14 @@ class user_class():
                 }
                 # user.update(update)
                 db["db_brands"]["brands"].update_one(query, update)
+                return
+        self.is_authenticated = False
 
     def load(self):
         if self.user_id is None:
             return
         db = get_db()
-        query = {"uuid": self.user_id}
+        query = {"_id": self.user_id}
         print(query)
         user = db["db_brands"]["brands"].find_one(query)
         print(user)
@@ -112,7 +115,7 @@ class user_class():
 
     def get_facebook_auth_state(self, new=False):
         db = get_db()
-        query = {"uuid": self.user_id}
+        query = {"_id": self.user_id}
         user = db["db_brands"]["brands"].find_one(query)
         state = None
         if new:
@@ -129,7 +132,7 @@ class user_class():
 
     def get_facebook_user(self):
         db = get_db()
-        query = {"uuid": self.user_id}
+        query = {"_id": self.user_id}
         user = db["db_brands"]["brands"].find_one(query)
         if user["facebook_user"] is None:
             return None
@@ -214,7 +217,7 @@ class user_class():
 
         # Save user token
         db = get_db()
-        query = {"uuid": self.user_id}
+        query = {"_id": self.user_id}
         user = db["db_brands"]["brands"].find_one(query)
         update = {
             "$set": {
@@ -229,6 +232,8 @@ class user_class():
 
 @login_manager.user_loader
 def load_user(user_id):
+    if user_id is None:
+        return None
     return user_class("", int(user_id))
 
 
@@ -238,32 +243,6 @@ def index():
     fuser = current_user.get_facebook_user()
     url_fbauth = "/facebook_auth_a"
     return render_template('index.html', fuser=fuser, url_fbauth=url_fbauth)
-
-
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    # Here we use a class of some kind to represent and validate our
-    # client-side form data. For example, WTForms is a library that will
-    # handle this for us, and we use a custom LoginForm to validate.
-    username = request.form.get('username')
-    password = request.form.get('password')
-    if username is not None:
-        # Login and validate the user.
-        # user should be an instance of your `User` class
-        user = user_class(username)
-        user.check_autentication(username, password)
-        login_user(user)
-
-        flash('Logged in successfully.')
-
-        next = request.args.get('next')
-        # is_safe_url should check if the url is safe for redirects.
-        # See http://flask.pocoo.org/snippets/62/ for an example.
-        if not is_safe_url(next):
-            return abort(400)
-
-        return redirect(next or url_for('main.index'))
-    return render_template('login.html', username=username)
 
 
 @main.route('/select_page/<bot_id>/<page_id>/<action>', methods=['GET'])
@@ -294,7 +273,7 @@ def select_page(bot_id, page_id, action):
         db["db_bots"]["bots"].update_one(query, update)
     if action == "select":
         db = get_db()
-        query = {"uuid": current_user.user_id}
+        query = {"_id": current_user.user_id}
         user = db["db_brands"]["brands"].find_one(query)
         if user["facebook_user"] is None:
             abort(500)
@@ -349,7 +328,7 @@ def subscribe_to_page(page_id, action):
     if action not in ["subscribe", "unsubscribe"]:
         abort(500)
     db = get_db()
-    query = {"uuid": current_user.user_id}
+    query = {"_id": current_user.user_id}
     user = db["db_brands"]["brands"].find_one(query)
     if user["facebook_user"] is None:
         return None
@@ -470,6 +449,67 @@ def mybots():
 def logout():
     logout_user()
     return redirect(url_for('login'))
+
+
+@app.route("/signin", methods=['GET', 'POST'])
+def signin():
+    db = get_db()
+    username = request.args.get('username')
+    password = request.args.get('password')
+    password_b = request.args.get('password_b')
+    if username is not None and password is not None:
+        if password != password_b:
+            flash('Passwords not matching.')
+            return redirect(url_for('signin'))
+        db = get_db()
+        query = {"username": username}
+        brand = db["db_brands"]["brands"].find_one(query)
+        if brand is not None:
+            flash('Username already exists.')
+            return redirect(url_for('signin'))
+        hashed_password = bcrypt.hashpw(str(password).encode(), bcrypt.gensalt())
+        msg_json = {
+            "username": username,
+            "password": hashed_password,
+            "authenticated": False,
+            "facebook_user": {
+                "facebook_user_id": None,
+                "facebook_access_token": None
+            },
+            "facebook_auth_state": ""
+        }
+        inserted_id = db["db_brands"]["brands"].insert_one(msg_json).inserted_id
+        flash('User correctly created')
+    return redirect(url_for('login'))
+
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    # Here we use a class of some kind to represent and validate our
+    # client-side form data. For example, WTForms is a library that will
+    # handle this for us, and we use a custom LoginForm to validate.
+    username = request.form.get('username')
+    password = request.form.get('password')
+    if username is not None:
+        # Login and validate the user.
+        # user should be an instance of your `User` class
+        user = user_class(username)
+        user.check_autentication(username, password)
+        if user.is_authenticated:
+            login_user(user)
+
+            flash('Logged in successfully.')
+
+            next = request.args.get('next')
+            # is_safe_url should check if the url is safe for redirects.
+            # See http://flask.pocoo.org/snippets/62/ for an example.
+            if not is_safe_url(next):
+                return abort(400)
+
+            return redirect(next or url_for('main.index'))
+        else:
+            flash('Authentication Error.')
+    return render_template('login.html', username=username)
 
 
 @app.route("/privacy")
