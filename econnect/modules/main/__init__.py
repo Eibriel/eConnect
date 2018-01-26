@@ -152,7 +152,7 @@ class user_class():
         r = requests.get(url, params=params)
         r_json = r.json()
         if "error" in r_json:
-            econnect_logger.error("ERROR")
+            econnect_logger.error("ERROR A")
             econnect_logger.error(r_json)
             return None
 
@@ -167,9 +167,8 @@ class user_class():
                     r = requests.get(url, params=params)
                     rr_json = r.json()
                     if "error" in rr_json:
-                        econnect_logger.error("ERROR")
+                        econnect_logger.error("ERROR B")
                         econnect_logger.error(r.text)
-                        return None
                     page_instagram_id = None
                     if "connected_instagram_account" in rr_json:
                         page_instagram_id = rr_json["connected_instagram_account"]["id"]
@@ -187,7 +186,7 @@ class user_class():
                     rr_json = r.json()
                     print(r.text)
                     if "error" in rr_json:
-                        econnect_logger.error("ERROR")
+                        econnect_logger.error("ERROR C")
                         econnect_logger.error(r.text)
                         return None
                     for subscription in rr_json["data"]:

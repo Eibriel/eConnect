@@ -14,7 +14,7 @@
                     <ul>
                         {% for page in fuser["facebook_pages"]%}
                         {% if page["subscripted_app"] %}
-                        <li>{{ page["name"] }} {% if bot["integrations"]["facebook"]["page_id"] == page["id"] %}<strong>Selected{% if bot["integrations"]["facebook"]["instagram_id"] != null %} (+Instagram){% endif %}</strong>{% else %}<a href="/select_page/{{ bot["_id"] }}/{{ page["id"] }}/select">Select{% endif %}</a></li>
+                        <li>{{ page["name"] }} {% if bot["integrations"]["facebook"]["page_id"] == page["id"] %}<strong>Selected{% if bot["integrations"]["facebook"]["instagram_id"] is not none %} (+Instagram){% endif %}</strong>{% else %}<a href="/select_page/{{ bot["_id"] }}/{{ page["id"] }}/select">Select{% endif %}</a></li>
                         {% endif %}
                         {% endfor %}
                         <li><a href="/select_page/{{ bot["_id"] }}/all/unselect">Unselect all</a></li>
