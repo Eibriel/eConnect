@@ -77,8 +77,8 @@ class user_class():
         user = db["db_brands"]["brands"].find_one(query)
         print(user)
         if user is not None:
-            self.user_id = user["_id"]
-            if bcrypt.checkpw(str(user["password"]), hashed):
+            self.user_id = str(user["_id"])
+            if bcrypt.checkpw(password.encode(), str(user["password"]).encode()):
                 self.is_authenticated = True
                 print("AUTH")
                 update = {
@@ -95,7 +95,11 @@ class user_class():
         if self.user_id is None:
             return
         db = get_db()
-        query = {"_id": self.user_id}
+        try:
+            query = {"_id": bson.objectid.ObjectId(self.user_id)}
+        except:
+            econnect_logger.error("Error with ObjectId {}".format(self.user_id))
+            return None
         print(query)
         user = db["db_brands"]["brands"].find_one(query)
         print(user)
@@ -109,13 +113,13 @@ class user_class():
 
     def get_bots(self):
         db = get_db()
-        query = {"owners": {"$elemMatch": {"$eq": self.user_id}}}
+        query = {"owners": {"$elemMatch": {"$eq": bson.objectid.ObjectId(self.user_id)}}}
         bots = db["db_bots"]["bots"].find(query)
         return bots
 
     def get_facebook_auth_state(self, new=False):
         db = get_db()
-        query = {"_id": self.user_id}
+        query = {"_id": bson.objectid.ObjectId(self.user_id)}
         user = db["db_brands"]["brands"].find_one(query)
         state = None
         if new:
@@ -132,9 +136,11 @@ class user_class():
 
     def get_facebook_user(self):
         db = get_db()
-        query = {"_id": self.user_id}
+        query = {"_id": bson.objectid.ObjectId(self.user_id)}
         user = db["db_brands"]["brands"].find_one(query)
         if user["facebook_user"] is None:
+            econnect_logger.error("NOT FOUND")
+            econnect_logger.error(query)
             return None
         facebook_access_token = user["facebook_user"]["facebook_access_token"]
         facebook_user_id = user["facebook_user"]["facebook_user_id"]
@@ -146,6 +152,8 @@ class user_class():
         r = requests.get(url, params=params)
         r_json = r.json()
         if "error" in r_json:
+            econnect_logger.error("ERROR")
+            econnect_logger.error(r_json)
             return None
 
         facebook_pages = []
@@ -159,6 +167,8 @@ class user_class():
                     r = requests.get(url, params=params)
                     rr_json = r.json()
                     if "error" in rr_json:
+                        econnect_logger.error("ERROR")
+                        econnect_logger.error(r.text)
                         return None
                     page_instagram_id = None
                     if "connected_instagram_account" in rr_json:
@@ -177,6 +187,8 @@ class user_class():
                     rr_json = r.json()
                     print(r.text)
                     if "error" in rr_json:
+                        econnect_logger.error("ERROR")
+                        econnect_logger.error(r.text)
                         return None
                     for subscription in rr_json["data"]:
                         if subscription["id"] == app.config["FB_APP_ID"]:
@@ -217,7 +229,7 @@ class user_class():
 
         # Save user token
         db = get_db()
-        query = {"_id": self.user_id}
+        query = {"_id": bson.objectid.ObjectId(self.user_id)}
         user = db["db_brands"]["brands"].find_one(query)
         update = {
             "$set": {
@@ -234,7 +246,9 @@ class user_class():
 def load_user(user_id):
     if user_id is None:
         return None
-    return user_class("", int(user_id))
+    print("USER")
+    print(user_id)
+    return user_class("", user_id)
 
 
 @main.route('/', methods=['GET'])
@@ -267,13 +281,14 @@ def select_page(bot_id, page_id, action):
             "$set": {
                 "integrations.facebook.page_id": None,
                 "integrations.facebook.page_access_token": None,
-                "integrations.facebook.instagram_id": None
+                "integrations.facebook.instagram_id": None,
+                "integrations.facebook.user_access_token": None
             }
         }
         db["db_bots"]["bots"].update_one(query, update)
     if action == "select":
         db = get_db()
-        query = {"_id": current_user.user_id}
+        query = {"_id": bson.objectid.ObjectId(current_user.user_id)}
         user = db["db_brands"]["brands"].find_one(query)
         if user["facebook_user"] is None:
             abort(500)
@@ -315,7 +330,8 @@ def select_page(bot_id, page_id, action):
             "$set": {
                 "integrations.facebook.page_id": page_id,
                 "integrations.facebook.page_access_token": page_access_token,
-                "integrations.facebook.instagram_id": page_instagram_id
+                "integrations.facebook.instagram_id": page_instagram_id,
+                "integrations.facebook.user_access_token": user["facebook_user"]["facebook_access_token"]
             }
         }
         db["db_bots"]["bots"].update_one(query, update)
@@ -328,7 +344,7 @@ def subscribe_to_page(page_id, action):
     if action not in ["subscribe", "unsubscribe"]:
         abort(500)
     db = get_db()
-    query = {"_id": current_user.user_id}
+    query = {"_id": bson.objectid.ObjectId(current_user.user_id)}
     user = db["db_brands"]["brands"].find_one(query)
     if user["facebook_user"] is None:
         return None
@@ -470,7 +486,7 @@ def signin():
         hashed_password = bcrypt.hashpw(str(password).encode(), bcrypt.gensalt())
         msg_json = {
             "username": username,
-            "password": hashed_password,
+            "password": hashed_password.decode("utf-8"),
             "authenticated": False,
             "facebook_user": {
                 "facebook_user_id": None,
