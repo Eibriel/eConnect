@@ -14,10 +14,11 @@
             <li>{{ page["name"] }} {% if page["instagram"] %}(+Instagram){% endif %} {% if page["subscripted_app"] %}<a href="/action_to_page/{{ page["id"] }}/unsubscribe">Unsubscribe</a>{% else %}<a href="/action_to_page/{{ page["id"] }}/subscribe">Subscribe</a>{% endif %}</li>
         {% endfor %}
         </ul>
-        <a href="{{ url_fbauth }}" class="btn btn-primary">Reconnect to Facebook</a>
+        <a href="/facebook_auth_a" class="btn btn-primary">Reconnect to Facebook</a>
         {% else %}
-        <a href="{{ url_fbauth }}" class="btn btn-primary">Connect to Facebook</a>
+        <a href="/facebook_auth_a" class="btn btn-primary">Connect to Facebook</a>
         {% endif %}
+        <a href="/mercadolibre_auth_a" class="btn btn-primary">Connect to MercadoLibre</a>
     </div>
 </div>
 

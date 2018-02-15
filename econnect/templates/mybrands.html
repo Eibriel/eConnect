@@ -1,0 +1,32 @@
+{% extends "layout.html" %}
+{% block body %}
+
+<h1>My Brands</h1>
+{% for brand in brands %}
+<div class="card">
+    <h5 class="card-header">{{ brand.name }}</h5>
+    <div class="card-body">
+        <h5 class="card-title">{{ brand.name }} Bots</h5>
+        <p class="card-text">{{ brand.description }}</p>
+        {% for bot in brands_bots[brand["_id"]] %}
+        <h6 class="card-text">{{ bot.name }}</h6>
+        <p>Code name: {{ bot.code_name }}</p>
+        <h7 class="card-text">Facebook</h7>
+        <ul>
+            {% for page in fuser["facebook_pages"]%}
+            {% if page["subscripted_app"] %}
+            <li>{{ page["name"] }} {% if bot["integrations"]["facebook"]["page_id"] == page["id"] %}<strong>Selected</strong>{% else %}<a href="/select_page/{{ bot["_id"] }}/{{ page["id"] }}/select">Select{% endif %}</a></li>
+            {% endif %}
+            {% endfor %}
+            <li><a href="/select_page/{{ bot["_id"] }}/all/unselect">Unselect all</a></li>
+        </ul>
+        <p>
+            {% if bot["integrations"]["facebook"]["subscribed_to_messenger"] %}<a href="/action_to_facebook/{{ bot["_id"] }}/messenger/unsubscribe">Unsubscribe from Messenger</a>{% else %}<a href="/action_to_facebook/{{ bot["_id"] }}/messenger/subscribe">Subscribe to Messenger</a>{% endif %}</li>
+            <br>{% if bot["integrations"]["facebook"]["subscribed_to_feed"] %}<a href="/action_to_facebook/{{ bot["_id"] }}/feed/unsubscribe">Unsubscribe from Feed</a>{% else %}<a href="/action_to_facebook/{{ bot["_id"] }}/feed/subscribe">Subscribe to Feed</a>{% endif %}
+        </p>
+        {% endfor %}
+    </div>
+</div>
+{% endfor %}
+
+{% endblock %}

@@ -21,13 +21,14 @@ if 'VCAP_SERVICES' not in os.environ:
 
 def connect_db():
     prefix = "dev_"
+    sufix = "_{}".format(app.config["VERSION"])
     if 'VCAP_SERVICES' in os.environ:
         prefix = ""
         vcap = json.loads(os.getenv('VCAP_SERVICES'))
-        print('Found VCAP_SERVICES')
+        print('Found VCAP_SERVICES on environment')
     elif "LOCAL_ENV" in app.config:
         vcap = app.config["LOCAL_ENV"]
-        print('Found local VCAP_SERVICES')
+        print('Found local VCAP_SERVICES on config')
     else:
         print('No Cloudant')
         return None, None
@@ -44,10 +45,10 @@ def connect_db():
         print("Cloudant Error")
     try:
         db = {
-            "db_econnect": client["{}econnect".format(prefix)],
-            "db_brands": client["{}brands".format(prefix)],
-            "db_bots": client["{}bots".format(prefix)],
-            "db_users": client["{}users".format(prefix)]
+            "db_econnect": client["{}econnect{}".format(prefix, sufix)],
+            "db_brands": client["{}brands{}".format(prefix, sufix)],
+            "db_bots": client["{}bots{}".format(prefix, sufix)],
+            "db_users": client["{}users{}".format(prefix, sufix)]
         }
     except:
         raise

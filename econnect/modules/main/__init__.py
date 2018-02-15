@@ -74,7 +74,7 @@ class user_class():
         db = get_db()
         query = {"username": username}
         print(query)
-        user = db["db_brands"]["brands"].find_one(query)
+        user = db["db_users"]["users"].find_one(query)
         print(user)
         if user is not None:
             self.user_id = str(user["_id"])
@@ -87,7 +87,7 @@ class user_class():
                     }
                 }
                 # user.update(update)
-                db["db_brands"]["brands"].update_one(query, update)
+                db["db_users"]["users"].update_one(query, update)
                 return
         self.is_authenticated = False
 
@@ -101,7 +101,7 @@ class user_class():
             econnect_logger.error("Error with ObjectId {}".format(self.user_id))
             return None
         print(query)
-        user = db["db_brands"]["brands"].find_one(query)
+        user = db["db_users"]["users"].find_one(query)
         print(user)
         if user is None:
             return
@@ -110,6 +110,20 @@ class user_class():
 
     def get_id(self):
         return str(self.user_id)
+
+    def get_brands(self):
+        db = get_db()
+        query = {"users": {"$elemMatch": {"$eq": bson.objectid.ObjectId(self.user_id)}}}
+        brands = db["db_brands"]["brands"].find(query)
+        brands_bots = {}
+        for brand in brands:
+            bots = []
+            for bot in brand["bots"]:
+                query = {"_id": bot}
+                bots.append(db["db_bots"]["bots"].find_one(query))
+            brands_bots[brand["_id"]] = bots
+        brands.rewind()
+        return brands, brands_bots
 
     def get_bots(self):
         db = get_db()
@@ -120,30 +134,30 @@ class user_class():
     def get_facebook_auth_state(self, new=False):
         db = get_db()
         query = {"_id": bson.objectid.ObjectId(self.user_id)}
-        user = db["db_brands"]["brands"].find_one(query)
+        user = db["db_users"]["users"].find_one(query)
         state = None
         if new:
             state = str(random.randint(1000, 9999))
             update = {
                 "$set": {
-                    "facebook_auth_state": state
+                    "facebook_user.facebook_auth_state": state
                 }
             }
-            db["db_brands"]["brands"].update_one(query, update)
+            db["db_users"]["users"].update_one(query, update)
         else:
-            state = user["facebook_auth_state"]
+            state = user["facebook_user"]["facebook_auth_state"]
         return state
 
     def get_facebook_user(self):
         db = get_db()
         query = {"_id": bson.objectid.ObjectId(self.user_id)}
-        user = db["db_brands"]["brands"].find_one(query)
+        user = db["db_users"]["users"].find_one(query)
         if user["facebook_user"] is None:
             econnect_logger.error("NOT FOUND")
             econnect_logger.error(query)
             return None
         facebook_access_token = user["facebook_user"]["facebook_access_token"]
-        facebook_user_id = user["facebook_user"]["facebook_user_id"]
+        facebook_user_id = user["facebook_user"]["facebook_asid"]
 
         params = {
             "access_token": facebook_access_token
@@ -214,9 +228,13 @@ class user_class():
         r_json = r.json()
         econnect_logger.error(r_json)
         app_token = r_json["access_token"]
-        # inspeccionar token
-        url = "https://graph.facebook.com/debug_token?input_token={}&access_token={}".format(access_token, app_token)
-        r = requests.get(url)
+        # Inspect token
+        params = {
+            "input_token": access_token,
+            "access_token": app_token
+        }
+        url = "https://graph.facebook.com/debug_token"
+        r = requests.get(url, params=params)
         r_json = r.json()
         econnect_logger.error(r_json)
         token_user_id = r_json["data"]["user_id"]
@@ -229,7 +247,7 @@ class user_class():
         # Save user token
         db = get_db()
         query = {"_id": bson.objectid.ObjectId(self.user_id)}
-        user = db["db_brands"]["brands"].find_one(query)
+        user = db["db_users"]["users"].find_one(query)
         update = {
             "$set": {
                 "facebook_user": {
@@ -238,7 +256,35 @@ class user_class():
                 }
             }
         }
-        db["db_brands"]["brands"].update_one(query, update)
+        db["db_users"]["users"].update_one(query, update)
+
+    def connect_mercadolibre_user(self, access_token, refresh_token):
+        # Inspect token
+        params = {
+            "access_token": access_token
+        }
+        url = "https://api.mercadolibre.com/users/me"
+        r = requests.get(url, params=params)
+        r_json = r.json()
+        token_user_id = r_json["id"]
+        token_user_nickname = r_json["nickname"]
+        # Save user token
+        db = get_db()
+        query = {"_id": bson.objectid.ObjectId(self.user_id)}
+        user = db["db_users"]["users"].find_one(query)
+        update = {
+            "$set": {
+                "mercadolibre_user": {
+                    "ar": {
+                        "ml_id": token_user_id,
+                        "ml_nickname": token_user_nickname,
+                        "ml_access_token": access_token,
+                        "ml_refresh_token": refresh_token
+                    }
+                }
+            }
+        }
+        db["db_users"]["users"].update_one(query, update)
 
 
 @login_manager.user_loader
@@ -254,8 +300,7 @@ def load_user(user_id):
 @login_required
 def index():
     fuser = current_user.get_facebook_user()
-    url_fbauth = "/facebook_auth_a"
-    return render_template('index.html', fuser=fuser, url_fbauth=url_fbauth)
+    return render_template('index.html', fuser=fuser)
 
 
 @main.route('/select_page/<bot_id>/<page_id>/<action>', methods=['GET'])
@@ -451,6 +496,47 @@ def auth_b():
     return redirect(url_for('.index'))
 
 
+@main.route('/mercadolibre_auth_a', methods=['GET'])
+@login_required
+def mercadolibre_auth_a():
+    url_mlauth = "https://auth.mercadolibre.com.ar/authorization?response_type=code&client_id={}".format(app.config["ML_APP_ID"])
+    return redirect(url_mlauth)
+
+
+@main.route('/mercadolibre_auth_b', methods=['GET'])
+@login_required
+def mercadolibre_auth_b():
+    code = request.args.get('code')
+
+    params = {
+        "grant_type": "authorization_code",
+        "client_id": app.config["ML_APP_ID"],
+        "client_secret": app.config["ML_APP_SECRET"],
+        "code": code,
+        "redirect_uri": "https://connect.eibriel.com/mercadolibre_auth_b"
+    }
+
+    url = "https://api.mercadolibre.com/oauth/token"
+    r = requests.get(url, params=params)
+    r_json = r.json()
+    access_token = r_json["access_token"]
+    refresh_token = r_json["refresh_token"]
+    current_user.connect_mercadolibre_user(access_token, refresh_token)
+    return redirect(url_for('.index'))
+
+
+@app.route("/mybrands")
+@login_required
+def mybrands():
+    brands, brands_bots = current_user.get_brands()
+    print("Brands")
+    print(brands)
+    print("BrandsBots")
+    print(brands_bots)
+    fuser = current_user.get_facebook_user()
+    return render_template('mybrands.html', brands=brands, brands_bots=brands_bots, fuser=fuser)
+
+
 @app.route("/mybots")
 @login_required
 def mybots():
@@ -478,7 +564,7 @@ def signin():
             return redirect(url_for('signin'))
         db = get_db()
         query = {"username": username}
-        brand = db["db_brands"]["brands"].find_one(query)
+        brand = db["db_users"]["users"].find_one(query)
         if brand is not None:
             flash('Username already exists.')
             return redirect(url_for('signin'))
@@ -488,12 +574,20 @@ def signin():
             "password": hashed_password.decode("utf-8"),
             "authenticated": False,
             "facebook_user": {
-                "facebook_user_id": None,
-                "facebook_access_token": None
+                "facebook_asid": None,
+                "facebook_psid": None,
+                "business_token": None,
+                "facebook_access_token": None,
+                "facebook_auth_state": ""
             },
-            "facebook_auth_state": ""
+            "telegram_user": {
+                "telegram_id": None,
+                "telegram_username": None
+            },
+            "mercadolibre_user": {},
+            "data": {}
         }
-        inserted_id = db["db_brands"]["brands"].insert_one(msg_json).inserted_id
+        inserted_id = db["db_users"]["users"].insert_one(msg_json).inserted_id
         flash('User correctly created')
     return redirect(url_for('login'))
 
